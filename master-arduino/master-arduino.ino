@@ -17,7 +17,7 @@
 //==========================================================================================================================================================================================================================================
 // Create and initialize global variables, objects, and constants (containers for all data)
 //==========================================================================================================================================================================================================================================
-const int aliveLED = 13;                //create a name for "robot alive" blinky light pin 
+const int aliveLED = 13;                //create a name for "robot alive" blinky light pin
 const int eStopPin = 12;                //create a name for pin connected to ESTOP switch
 boolean aliveLEDState = true;           //create a name for alive blinky light state to be used with timer
 boolean ESTOP = true;                   //create a name for emergency stop of all motors
@@ -27,11 +27,15 @@ String loopError = "no error";          //create a String for the real time cont
 unsigned long oldLoopTime = 0;          //create a name for past loop time in milliseconds
 unsigned long newLoopTime = 0;          //create a name for new loop time in milliseconds
 unsigned long cycleTime = 0;            //create a name for elapsed loop cycle time
-const long controlLoopInterval = 1000;  //create a name for control loop cycle time in milliseconds
+const long controlLoopInterval = 100;  //create a name for control loop cycle time in milliseconds
 
 int voltageDivider = A0;                //create a name for pin for input voltage from voltage divider
 int voltDivValue = 0;
 float batteryVoltage = 0;
+int averageVoltCounter = 0;             //increments every revolution to count up
+float averageVoltage = 0;               //averaged Voltage
+float voltageSumUp = 0;                 //place to sum up voltages which will be devided by count to get average
+const int PWR_STRIP = 4;                //pin for power strip switch
 
 
 //==========================================================================================================================================================================================================================================
@@ -46,6 +50,8 @@ void setup() {
   Serial.println(" Controller Starting Up! Make sure you followed the Olin-at-Woodland-Harvest-Electricity-Guidelines ");
 
   // Step 2) Put your robot mission setup code here, to run once:
+  pinMode(PWR_STRIP, OUTPUT);
+  digitalWrite(PWR_STRIP, LOW);
 }
 //==========================================================================================================================================================================================================================================
 // Flight code to run continuously until robot is powered down
@@ -93,16 +99,74 @@ void loop() {
         realTimeRunStop = false;                                  // exit real-time control loop
         break;
       }
-      else if (command == "measure") {
+      else if (command == "measure" or command == "m") {
+        // READ BATTERY VOLTAGE
         voltDivValue = analogRead(voltageDivider);                // read value from voltage divider 
-        batteryVoltage = 6.097*(float(voltDivValue)/205);                         // multiply value by 6 to get real voltage value
-        Serial.println(batteryVoltage);
+        batteryVoltage = 6.097*(float(voltDivValue)/205);         // multiply value by 6 to get real voltage value
+        //Serial.println(batteryVoltage);
+
+        // AVERAGE VOLTAGE
+        int avgCount = 30;
+        if (averageVoltCounter <= avgCount){
+          ++averageVoltCounter;                                   // increment counter
+          voltageSumUp = voltageSumUp + batteryVoltage;       // add up voltages to divide by count later
+          if (averageVoltCounter == avgCount){
+            
+            averageVoltage = voltageSumUp/avgCount;
+            Serial.print("-->");
+            Serial.println(averageVoltage);
+            averageVoltCounter = 0;
+            voltageSumUp = 0;            
+          }
+        }
+        realTimeRunStop = true;                                   // run loop continually        
       }
-      else if (command == "move") {
-        Serial.println("Move robot ");
-        Serial.println("Type stop to stop robot");
-        realTimeRunStop = true;                                   // don't exit loop after running once
+      
+      else if (command == "fridge" or command == "f"){                                // make robot alive with small motions
+        // READ BATTERY VOLTAGE
+        voltDivValue = analogRead(voltageDivider);                // read value from voltage divider 
+        batteryVoltage = 6.097*(float(voltDivValue)/205);         // multiply value by 6 to get real voltage value
+        //Serial.println(batteryVoltage);
+
+        // AVERAGE VOLTAGE
+        int avgCount = 30;
+        if (averageVoltCounter <= avgCount){
+          ++averageVoltCounter;                                   // increment counter
+          voltageSumUp = voltageSumUp + batteryVoltage;       // add up voltages to divide by count later
+          if (averageVoltCounter == avgCount){
+            
+            averageVoltage = voltageSumUp/avgCount;
+            //Serial.print("-->");
+            //Serial.println(averageVoltage);
+            averageVoltCounter = 0;
+            voltageSumUp = 0;            
+          }
+        }
+
+        // SWITCH FRIDGE BASED ON VOLTAGE
+        float fridgeVoltageThreshold = 24.5;
+        if (averageVoltage > fridgeVoltageThreshold and averageVoltCounter == 1){
+          Serial.println("======");
+          Serial.println("Fridge ON");
+          Serial.print("avgVoltage ");
+          Serial.println(averageVoltage);
+          Serial.print("threshold ");
+          Serial.println(fridgeVoltageThreshold);
+          digitalWrite(PWR_STRIP, HIGH);
+        }
+        else if(averageVoltCounter == 1){
+          Serial.println("======");
+          Serial.println("Fridge OFF");
+          Serial.print("avgVoltage ");
+          Serial.println(averageVoltage);
+          Serial.print("threshold ");
+          Serial.println(fridgeVoltageThreshold);
+          digitalWrite(PWR_STRIP, LOW);
+        }
+        realTimeRunStop = true;                                   // run loop continually
       }
+      
+
       else if (command == "idle"){                                // make robot alive with small motions
         Serial.println("Idle Robot");
         Serial.println("Type stop to stop robot");
