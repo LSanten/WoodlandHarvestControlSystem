@@ -130,7 +130,7 @@ void loop() {
       else if (command == "fridge" or command == "f"){                                // make robot alive with small motions
         // READ BATTERY VOLTAGE
         voltDivValue = analogRead(voltageDivider);                // read value from voltage divider 
-        batteryVoltage = 6.000*(float(voltDivValue)/205);         // multiply value by 6 to get real voltage value
+        batteryVoltage = 6.097*(float(voltDivValue)/205);         // multiply value by 6 to get real voltage value
         //Serial.println(batteryVoltage);
 
         // AVERAGE VOLTAGE
@@ -141,22 +141,26 @@ void loop() {
           if (averageVoltCounter == avgCount){
             
             averageVoltage = voltageSumUp/avgCount;
-            Serial.println("======");
-            Serial.print("avg. Voltage: ");
-            Serial.println(averageVoltage);
+            //Serial.print("-->");
+            //Serial.println(averageVoltage);
             averageVoltCounter = 0;
             voltageSumUp = 0;            
           }
         }
 
         // SWITCH FRIDGE BASED ON VOLTAGE
-        float fridgeUpperVoltageThreshold = 27.0;
+        float fridgeUpperVoltageThreshold = 26.5;
         float fridgeLowerVoltageThreshold = 25.2;
 
         // CHECK VOLTAGE AND TURN FRIDGE ON IF CURRENTLY OFF AND ABOVE UPPER VOLTAGE THRESHOLD 
         if (averageVoltage > fridgeUpperVoltageThreshold and digitalRead(PWR_STRIP) == LOW){
           Serial.println("======");
-          fridgeWaitTimerStart = millis();          
+          
+          fridgeWaitTimerStart = millis();
+          Serial.println("WAIT 20 SECONDS AT LEAST");
+          
+          Serial.print("Timer: ");
+          Serial.println(fridgeTimer);
           Serial.println("Fridge ON");
           Serial.print("avgVoltage ");
           Serial.println(averageVoltage);
@@ -171,30 +175,25 @@ void loop() {
         }
         else{
           fridgeTimer = currentTime - fridgeWaitTimerStart;
-          //Serial.print("Timer: ");
-          //Serial.println(fridgeTimer);
+          Serial.print("Timer: ");
+          Serial.println(fridgeTimer);
         }
                   
         
-        if(averageVoltage < fridgeLowerVoltageThreshold){
+        if(averageVoltage < fridgeLowerVoltageThreshold and fridgeTimer > 60000){
           
-          if(digitalRead(PWR_STRIP) == HIGH and averageVoltCounter == 1){
-            Serial.println("======");
-            Serial.println("Voltage dropped. Will turn off soon."); 
-          }
-          else if(digitalRead(PWR_STRIP) == HIGH and fridgeTimer > 60000){
-            Serial.println("======");
-            Serial.print("Timer: ");
-            Serial.println(fridgeTimer);
-            Serial.println("Fridge OFF");
-            Serial.print("avg. Voltage: ");
-            Serial.println(averageVoltage);
-            Serial.print("threshold ");
-            Serial.println(fridgeLowerVoltageThreshold);
-            digitalWrite(PWR_STRIP, LOW);
-            fridgeTimer = 0;
-            
-          }
+          Serial.println("======");
+          Serial.print("Timer: ");
+          Serial.println(fridgeTimer);
+          
+          Serial.println("Fridge OFF");
+          Serial.print("avgVoltage ");
+          Serial.println(averageVoltage);
+          Serial.print("threshold ");
+          Serial.println("======");
+          Serial.println(fridgeLowerVoltageThreshold);
+          digitalWrite(PWR_STRIP, LOW);
+          fridgeTimer = 0;
         }
         realTimeRunStop = true;                                   // run loop continually
       }
@@ -283,9 +282,8 @@ String getOperatorInput() {
   Serial.println("|     Please type desired robot behavior in command line at top of this window        |");
   Serial.println("|     and then press SEND button.                                                     |");
   Serial.println("=======================================================================================");
-  //while (Serial.available()==0) {};                     // do nothinguntil operator input typed
-  //command = Serial.readString();                        // read command string
-  command = "f";
+  while (Serial.available()==0) {};                     // do nothinguntil operator input typed
+  command = Serial.readString();                        // read command string
   Serial.print("| New Robot behavior command is: ");    // give command feedback to operator
   Serial.println(command);
   Serial.println("| Type 'stop' to stop control loop and wait for new command                           |");
