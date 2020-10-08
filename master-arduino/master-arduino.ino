@@ -19,6 +19,8 @@
 //==========================================================================================================================================================================================================================================
 const int aliveLED = 13;                //create a name for "robot alive" blinky light pin
 const int eStopPin = 12;                //create a name for pin connected to ESTOP switch
+const int PWR_STRIP = 4;                //pin for power strip switch
+const int buzzerPin = 5;                //pin for piezo buzzer
 boolean aliveLEDState = true;           //create a name for alive blinky light state to be used with timer
 boolean ESTOP = true;                   //create a name for emergency stop of all motors
 boolean realTimeRunStop = true;         //create a name for real time control loop flag
@@ -28,6 +30,8 @@ unsigned long oldLoopTime = 0;          //create a name for past loop time in mi
 unsigned long newLoopTime = 0;          //create a name for new loop time in milliseconds
 unsigned long cycleTime = 0;            //create a name for elapsed loop cycle time
 const long controlLoopInterval = 120;  //create a name for control loop cycle time in milliseconds
+int buzzerState = 0;                   //state through which we iterate to play different sounds after each other
+bool lastLoopPStrip = false;            //boolean that tells you if fride power strip was turned on during last loop
 
 int voltageDivider = A0;                //create a name for pin for input voltage from voltage divider
 int voltDivValue = 0;
@@ -35,9 +39,15 @@ float batteryVoltage = 0;
 int averageVoltCounter = 0;             //increments every revolution to count up
 float averageVoltage = 0;               //averaged Voltage
 float voltageSumUp = 0;                 //place to sum up voltages which will be devided by count to get average
-const int PWR_STRIP = 4;                //pin for power strip switch
-uint32_t fridgeWaitTimerStart;          // millis start time of timer for fridge to wait before checking voltaget (which might turn fridge off again)
+
+uint32_t fridgeWaitTimerStart = 0;          // millis start time of timer for fridge to wait before checking voltaget (which might turn fridge off again)
 uint32_t fridgeTimer;
+
+
+//===================SETTINGS======================
+bool defaultSwitch = true;                 //true turns on running on a default setting, false waits for your input.
+String defaultCommand = "fridge";         // will default to this command if defaultSwitch == true
+//===================SETTINGS======================
 
 //==========================================================================================================================================================================================================================================
 // Startup code to configure robot and pretest all robot functionality (to run once)
@@ -47,6 +57,7 @@ void setup() {
   // Step 1) Put your robot setup code here, to run once:
   pinMode(aliveLED, OUTPUT);          //initialize aliveLED pin as an output
   pinMode(eStopPin, INPUT_PULLUP);    //use internal pull-up on ESTOP switch input pin 
+  pinMode(buzzerPin, OUTPUT);
   Serial.begin(9600);                 //start serial communication
   Serial.println(" Controller Starting Up! Make sure you followed the Olin-at-Woodland-Harvest-Electricity-Guidelines ");
 
@@ -150,7 +161,7 @@ void loop() {
 
         // SWITCH FRIDGE BASED ON VOLTAGE
         float fridgeUpperVoltageThreshold = 27.7;
-        float fridgeLowerVoltageThreshold = 25.7;
+        float fridgeLowerVoltageThreshold = 25.6;
         // PRINT FRIDGE STATUS
         if (digitalRead(PWR_STRIP) == HIGH and averageVoltCounter == 1){
           
@@ -186,7 +197,7 @@ void loop() {
         }
                   
         
-        if(averageVoltage < fridgeLowerVoltageThreshold and fridgeTimer > 60000){
+        if(averageVoltage < fridgeLowerVoltageThreshold and fridgeTimer > 10000){
           
           Serial.println("======");
           Serial.print("Timer: ");
@@ -202,7 +213,55 @@ void loop() {
           fridgeTimer = 0;
         }
         realTimeRunStop = true;                                   // run loop continually
+
+        //BUZZER SECTION
+        //detect when power strip goes from on to off and off to on
+        if(digitalRead(PWR_STRIP) == HIGH and lastLoopPStrip == false){
+          buzzerState = 1;
+          lastLoopPStrip = true;
+        }        
+        else if(digitalRead(PWR_STRIP) == LOW and lastLoopPStrip == true){
+          buzzerState = 33;
+          lastLoopPStrip = false;
+        }
+
+        //play through tones based on off or on
+        if (buzzerState >= 1 and buzzerState <=10){             //fridge got turned on
+          tone(buzzerPin, 3000);
+          buzzerState = buzzerState + 1;
+          Serial.println("added one");
+        }        
+        else if (buzzerState >= 11 and buzzerState <=20){
+          tone(buzzerPin, 3300);
+          buzzerState = buzzerState + 1;
+        }
+        else if (buzzerState >= 21 and buzzerState <=30){
+          tone(buzzerPin, 3500);
+          buzzerState = buzzerState + 1;
+        }
+        else if (buzzerState == 31){
+          noTone(buzzerPin);
+          buzzerState = 32;
+        }
+        else if (buzzerState >= 33 and buzzerState <=42){
+          tone(buzzerPin, 3500);
+          buzzerState = buzzerState + 1;
+        }
+        else if (buzzerState >= 43 and buzzerState <=52){
+          tone(buzzerPin, 3300);
+          buzzerState = buzzerState + 1;
+        }
+        else if (buzzerState >= 53 and buzzerState <=62){
+          tone(buzzerPin, 3000);
+          buzzerState = buzzerState + 1;
+        }
+        else if (buzzerState == 63){
+          noTone(buzzerPin);
+          buzzerState = buzzerState + 1;
+        }
+
       }
+      
       
 
       else if (command == "idle"){                                // make robot alive with small motions
@@ -288,9 +347,16 @@ String getOperatorInput() {
   Serial.println("|     Please type desired robot behavior in command line at top of this window        |");
   Serial.println("|     and then press SEND button.                                                     |");
   Serial.println("=======================================================================================");
-  //while (Serial.available()==0) {};                     // do nothinguntil operator input typed
-  //command = Serial.readString();                        // read command string
-  command = "fridge";
+  
+  //                       // read command string
+  if (defaultSwitch == true) {
+    command = defaultCommand;
+  }
+  else {
+    while (Serial.available()==0) {};                     // do nothinguntil operator input typed
+    command = Serial.readString(); 
+  }
+  
   Serial.print("| New Robot behavior command is: ");    // give command feedback to operator
   Serial.println(command);
   Serial.println("| Type 'stop' to stop control loop and wait for new command                           |");

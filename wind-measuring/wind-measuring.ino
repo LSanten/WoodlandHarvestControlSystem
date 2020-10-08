@@ -36,10 +36,10 @@ void loop() {
     float aFreq = 0;      //set to zero initially
     if(pulseTime > 0.0) aFreq = getAnemometerFreq(pulseTime); //calc freq in Hz of anemomter
     float wSpeedMPH = getWindMPH(aFreq);                      //calc wind speed in MPH
-    Serial.print("Hz: ");
-    Serial.println(aFreq);
-    Serial.print("MPH: ");
-    Serial.println(wSpeedMPH);
+    //Serial.print("Hz: ");
+    //Serial.println(aFreq);
+    //Serial.print("MPH: ");
+    //Serial.println(wSpeedMPH);
     Serial.print("avgSpeed: ");
     Serial.println(aWSpeed);
     Serial.end();
