@@ -15,7 +15,7 @@ void setup() {
   
   
   pinMode(interruptPin, INPUT_PULLUP); // set interrupt pin to input
-  attachInterrupt(interruptPin, anemometerISR, RISING); //setup interrupt on anemometer input pin, will run anemometerISR function whenever interrupt is being triggered
+  attachInterrupt(interruptPin, anemometerISR, RISING); //setup interrupt on anemometer input pin, will run anemometerISR function whenever falling edge is detected
   dataTimer = millis();  
 }
 
@@ -28,14 +28,14 @@ void loop() {
     detachInterrupt(interruptPin);          // shut off wind speed measurement when in this loop
     float aWSpeed = getAvgWindSpeed(culPulseTime, avgWindCount); //calcualte average wind speed
     culPulseTime = 0;     //reset cumulative pulse counter
+    Serial.begin(9600);
+    Serial.print("avgWindCount: ");
+    Serial.println(avgWindCount);
     avgWindCount = 0;     //reset average wind count
 
     float aFreq = 0;      //set to zero initially
     if(pulseTime > 0.0) aFreq = getAnemometerFreq(pulseTime); //calc freq in Hz of anemomter
     float wSpeedMPH = getWindMPH(aFreq);                      //calc wind speed in MPH
-
-    Serial.begin(9600);
-    Serial.println();
     Serial.print("Hz: ");
     Serial.println(aFreq);
     Serial.print("MPH: ");
@@ -61,9 +61,9 @@ float getAvgWindSpeed(float cPulse, int per) {
   }
 
 void anemometerISR() {
-  unsigned long cTime = millis(); //get current time
-  if(!start) {
-    pulseTime = (float)(cTime - sTime)/1000;
+  unsigned long cTime = millis();               //get current time
+  if(start != true and cTime > sTime) {                                  //this if statement won't run for first detection of falling edge. Will start after first one since start will be set to false.
+    pulseTime = (float)(cTime - sTime)/1000;    
     culPulseTime += pulseTime;
     avgWindCount++;
   }
