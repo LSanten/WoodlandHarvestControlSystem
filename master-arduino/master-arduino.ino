@@ -197,7 +197,7 @@ void loop() {
         }
                   
         
-        if(averageVoltage < fridgeLowerVoltageThreshold and fridgeTimer > 10000){
+        if(averageVoltage < fridgeLowerVoltageThreshold and fridgeTimer > 120000){
           
           Serial.println("======");
           Serial.print("Timer: ");
