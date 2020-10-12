@@ -12,7 +12,6 @@
 //==========================================================================================================================================================================================================================================
 // Load supporting Arduino Libraries
 //==========================================================================================================================================================================================================================================
-#include <Servo.h>                                //loading ServoMotors library
 
 //==========================================================================================================================================================================================================================================
 // Create and initialize global variables, objects, and constants (containers for all data)
@@ -24,7 +23,6 @@ const int buzzerPin = 5;                //pin for piezo buzzer
 boolean aliveLEDState = true;           //create a name for alive blinky light state to be used with timer
 boolean ESTOP = true;                   //create a name for emergency stop of all motors
 boolean realTimeRunStop = true;         //create a name for real time control loop flag
-String command = "stop   ";             //create a String object name for operator command string
 String loopError = "no error";          //create a String for the real time control loop error system
 unsigned long oldLoopTime = 0;          //create a name for past loop time in milliseconds
 unsigned long newLoopTime = 0;          //create a name for new loop time in milliseconds
@@ -45,8 +43,10 @@ uint32_t fridgeTimer;
 
 
 //===================SETTINGS======================
-bool defaultSwitch = true;                 //true turns on running on a default setting, false waits for your input.
-String defaultCommand = "fridge";         // will default to this command if defaultSwitch == true
+bool defaultSwitch = true;                        //true turns on running on a default setting, false waits for your input.
+String command = "fridge";                        //will default to this command if defaultSwitch == true
+float fridgeUpperVoltageThreshold = 28.65;        //fridge will turn on when this threshold is reached
+float fridgeLowerVoltageThreshold = 25.6;         //fridge will turn off when this lower threshold is reached (fridge won't turn off if this voltage is reached during the first two minutes after is was switched on)
 //===================SETTINGS======================
 
 //==========================================================================================================================================================================================================================================
@@ -160,8 +160,7 @@ void loop() {
         }
 
         // SWITCH FRIDGE BASED ON VOLTAGE
-        float fridgeUpperVoltageThreshold = 27.7;
-        float fridgeLowerVoltageThreshold = 25.6;
+        
         // PRINT FRIDGE STATUS
         if (digitalRead(PWR_STRIP) == HIGH and averageVoltCounter == 1){
           
@@ -350,7 +349,7 @@ String getOperatorInput() {
   
   //                       // read command string
   if (defaultSwitch == true) {
-    command = defaultCommand;
+    command = command;
   }
   else {
     while (Serial.available()==0) {};                     // do nothinguntil operator input typed
