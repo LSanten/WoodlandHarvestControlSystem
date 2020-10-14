@@ -28,49 +28,57 @@ volatile float culPulseTime = 0;    //stores cumulative pusletimes for averaging
 volatile unsigned int avgWindCount = 0;     //stores anemometer realy countrs for doing average wind speed
 uint32_t dataLoopCount = 0;                //increments every time data is being written and is multiplied with dataLoopLength
 String dataString ="";               //hold data to be written to SD card
-//File sensorData;                    //create file object for SD card writing
 //======================SETTINGS========================
 uint32_t dataLoopLength = 10000;    // length of loop to report average speed
+String filenameSD = "test";       // filename without .csv at the end filenameSD to write to SD card, can't be longer than 8
 //======================SETTINGS========================
 
+
+//=============SETUP================================================================
 void setup() {
   // put your setup code here, to run once:
   pinMode(LED, OUTPUT);
   pinMode(interruptPin, INPUT);                  //set interrupt pin to input
-
-
-  //SETUP SD CARD
-  Serial.begin(9600);
-  Serial.println("Initializing SD card...");
-  pinMode(CSpin, OUTPUT);                        //CS pin for SD card writing
-  if (!SD.begin(CSpin)) {
-    Serial.println("Card failed, or not present.");
-    return;
-  }
-  else{
-    Serial.println("card initialized.");
-  }
-  
-   
-  dataString = String("Time [s]") + "," + String("Speed [m/s]"); //write CSV (comma seperated vector)
-  saveData(dataString);
-  Serial.end();
-
-  
-  //attachInterrupt(digitalPinToInterrupt(interruptPin), anemometerISR, RISING); //setup interrupt on anemometer input pin, will run anemometerISR function whenever falling edge is detected
-  dataTimer = millis();                                 //start data timer
 
   //LCD startup 
   lcd.init();           //initiate lcd display
   lcd.backlight();
   lcd.setCursor(0, 0); // Set the cursor on the first column and first row.
   lcd.print("   Anemometer   "); // Print the string "Hello World!"
-  lcd.setCursor(2, 1); //Set the cursor on the third column and the second row (counting starts at 0!).
-  lcd.print("");
-  delay(1000);
+  
+  
+  //SETUP SD CARD
+  Serial.begin(9600);
+  Serial.println("Initializing SD card...");
+  pinMode(CSpin, OUTPUT);                        //CS pin for SD card writing
+  if (!SD.begin(CSpin)) {
+    Serial.println("Card failed, or not present.");
+    lcd.setCursor(0, 1); //Set the cursor on the third column and the second row (counting starts at 0!).
+    lcd.print("SD card failed");
+    return;
+  }
+  else{
+    Serial.println("card initialized.");
+    lcd.setCursor(0, 1); //Set the cursor on the third column and the second row (counting starts at 0!).
+    lcd.print("SD card found");
+  }  
+  
+  filenameSD = changeFileNameIfExists(filenameSD);
+  
+  dataString = String("Time [s]") + "," + String("Speed [m/s]"); //write CSV (comma seperated vector)
+  saveData(dataString, filenameSD);
+  Serial.end();
+
+  //LCD Wait
+  delay(2000);
   lcd.clear();
+  
+  //attachInterrupt(digitalPinToInterrupt(interruptPin), anemometerISR, RISING); //setup interrupt on anemometer input pin, will run anemometerISR function whenever falling edge is detected
+  dataTimer = millis();                                 //start data timer
+
+  
 }
-//=====END=====SETUP=====
+//=====END=====SETUP================================================================
 
 //==========LOOP=========
 void loop() {
@@ -105,7 +113,7 @@ void loop() {
 
     //Write to SD card
     dataString = String(rTime/1000) + "," + String(aWSpeedMS); //write CSV (comma seperated vector)
-    saveData(dataString);
+    saveData(dataString, filenameSD);
 
     Serial.end(); //end of dataprocessing loop
     }
@@ -152,9 +160,9 @@ void updateLCD(float windSpeed) {
   lcd.print("m/s");
 }
 
-void saveData(String dataString){
-  //if(SD.exists("data.csv")){ // check the card is still there
-  File sensorData = SD.open("data.csv", FILE_WRITE);
+void saveData(String dataString, String filenameSD){
+  //if(SD.exists(filenameSD)){ // check the card is still there
+  File sensorData = SD.open(filenameSD, FILE_WRITE);
   if (sensorData){
       sensorData.println(dataString);
       Serial.println("Wrote to file.");
@@ -163,5 +171,35 @@ void saveData(String dataString){
   //}
   else{
     Serial.println("Error writing to file !");
+  }
+}
+
+//void saveDataWithoutFileOverwrite(String dataString){
+  
+//}
+
+String changeFileNameIfExists(String filenameSD){
+  //add number to filename if filename exists and add .csv
+  String fullFilename = String(filenameSD) + String(".csv");
+  int numberAddOn = 0;
+  
+  if(SD.exists(fullFilename)){
+    String message = String("Filename ") + String(fullFilename) + String(" exists");
+    Serial.println(message);
+
+    while(SD.exists(fullFilename)){
+      fullFilename = String(filenameSD) + String(numberAddOn) + String(".csv");
+      numberAddOn = numberAddOn + 1;
+      Serial.println("thinking about new filenames...");
+    }
+    String message2 = String("Filename ") + String(fullFilename) + String(" will be used.");
+    Serial.println(message2); 
+    return(fullFilename);
+  }
+  else{
+    String message = String("Filename ") + String(fullFilename) + String(" doesn't exists");
+    Serial.println(message); 
+    Serial.println("File will be created.");
+    return(fullFilename);
   }
 }
