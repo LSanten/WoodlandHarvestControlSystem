@@ -45,7 +45,7 @@ uint32_t fridgeTimer;
 //===================SETTINGS======================
 bool defaultSwitch = true;                        //true turns on running on a default setting, false waits for your input.
 String command = "fridge";                        //will default to this command if defaultSwitch == true
-float fridgeUpperVoltageThreshold = 28.65;        //fridge will turn on when this threshold is reached
+float fridgeUpperVoltageThreshold = 27.75;        //fridge will turn on when this threshold is reached
 float fridgeLowerVoltageThreshold = 25.6;         //fridge will turn off when this lower threshold is reached (fridge won't turn off if this voltage is reached during the first two minutes after is was switched on)
 //===================SETTINGS======================
 

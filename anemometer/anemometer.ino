@@ -8,6 +8,9 @@
  *******************************************************************************************************************************************************************************************************************************************
  */
 #include <Wire.h>
+#include <config.h>             //for real time clock
+#include <ds3231.h>             //real time clock library from https://github.com/rodan/ds3231 //tutorial on https://create.arduino.cc/projecthub/MisterBotBreak/how-to-use-a-real-time-clock-module-ds3231-bc90fe
+                                //look in comments of arduino page if error is DS3231_INTCN' was not declared in this scope
 #include <LiquidCrystal_I2C.h>
 #include <SPI.h>
 #include <SD.h>
@@ -16,6 +19,7 @@
 // Connect to LCD via I2C, default address 0x27 (A0-A2 not jumpered)
 LiquidCrystal_I2C lcd = LiquidCrystal_I2C(0x27, 16, 2); // Change to (0x27, 20, 4)) for 20x4 LCD.
 
+struct ts t;                              //objects for real time clock
 const byte LED = 13;
 const byte interruptPin = 2;              //declare interrupt pin
 const int CSpin = 4;                      //CS pin for SD card (chip select pin)
@@ -28,9 +32,10 @@ volatile float culPulseTime = 0;    //stores cumulative pusletimes for averaging
 volatile unsigned int avgWindCount = 0;     //stores anemometer realy countrs for doing average wind speed
 uint32_t dataLoopCount = 0;                //increments every time data is being written and is multiplied with dataLoopLength
 String dataString ="";               //hold data to be written to SD card
+
 //======================SETTINGS========================
 uint32_t dataLoopLength = 10000;    // length of loop to report average speed
-String filenameSD = "test";       // filename without .csv at the end filenameSD to write to SD card, can't be longer than 8
+String filenameSD = "wind";       // will automatically be set to date - filename without .csv at the end filenameSD to write to SD card, can't be longer than 8
 //======================SETTINGS========================
 
 
@@ -45,7 +50,14 @@ void setup() {
   lcd.backlight();
   lcd.setCursor(0, 0); // Set the cursor on the first column and first row.
   lcd.print("   Anemometer   "); // Print the string "Hello World!"
-  
+
+  //REAL TIME CLOCK SETUP
+  //check out for setting time https://create.arduino.cc/projecthub/MisterBotBreak/how-to-use-a-real-time-clock-module-ds3231-bc90fe
+  Wire.begin();
+  //DS3231_init(DS3231_INTCN);
+  DS3231_init(0);
+  DS3231_get(&t);             //get current time
+  //display real from rtc on lcd display  
   
   //SETUP SD CARD
   Serial.begin(9600);
@@ -65,12 +77,15 @@ void setup() {
   
   filenameSD = changeFileNameIfExists(filenameSD);
   
-  dataString = String("Time [s]") + "," + String("Speed [m/s]"); //write CSV (comma seperated vector)
-  saveData(dataString, filenameSD);
+  
+  String dataString = String("Speed [m/s]"); //write CSV (comma seperated vector)
+  String timeString = String("Time [s]") + ",";
+  String dateString = String("Date") + ",";
+  saveData(dateString, timeString, dataString, filenameSD);
+   
+  
+  //SETUP END
   Serial.end();
-
-  //LCD Wait
-  delay(2000);
   lcd.clear();
   
   //attachInterrupt(digitalPinToInterrupt(interruptPin), anemometerISR, RISING); //setup interrupt on anemometer input pin, will run anemometerISR function whenever falling edge is detected
@@ -110,10 +125,17 @@ void loop() {
     Serial.println(aWSpeedMS);
     
     updateLCD(aWSpeedMS);
-
-    //Write to SD card
-    dataString = String(rTime/1000) + "," + String(aWSpeedMS); //write CSV (comma seperated vector)
-    saveData(dataString, filenameSD);
+    
+    //Write to SD card    
+    DS3231_get(&t);             //get current time
+    //display real from rtc on lcd display
+    String timeString = String(t.hour) + String(":") + String(t.min) + String(":")+ String(t.sec) + String(",");
+    String dateString = String(t.mon) + String("-")+ String(t.mday) + String(",");                                //string can't be longer - otherwise memory is too full
+  
+    
+    dataString = String(aWSpeedMS); //write CSV (comma seperated vector)
+    saveData(dateString, timeString, dataString, filenameSD);
+    
 
     Serial.end(); //end of dataprocessing loop
     }
@@ -160,10 +182,19 @@ void updateLCD(float windSpeed) {
   lcd.print("m/s");
 }
 
-void saveData(String dataString, String filenameSD){
+void addTableHeader(String tableHeader, String filenameSD){
+  File sensorData = SD.open(filenameSD, FILE_WRITE);
+  sensorData.println(tableHeader);
+  Serial.println("wrote header to table.");
+  sensorData.close(); // close the file
+}
+
+void saveData(String dateString, String timeString, String dataString, String filenameSD){
   //if(SD.exists(filenameSD)){ // check the card is still there
   File sensorData = SD.open(filenameSD, FILE_WRITE);
   if (sensorData){
+      sensorData.print(dateString);                 //strings need to be parsed individually - otherwise they are too long for limited memory
+      sensorData.print(timeString);
       sensorData.println(dataString);
       Serial.println("Wrote to file.");
       sensorData.close(); // close the file
@@ -184,16 +215,17 @@ String changeFileNameIfExists(String filenameSD){
   int numberAddOn = 0;
   
   if(SD.exists(fullFilename)){
-    String message = String("Filename ") + String(fullFilename) + String(" exists");
-    Serial.println(message);
+    Serial.print(fullFilename);
+    Serial.println(" exists already.");
 
     while(SD.exists(fullFilename)){
-      fullFilename = String(filenameSD) + String(numberAddOn) + String(".csv");
+      fullFilename = String(filenameSD) + String("_") + String(numberAddOn) + String(".csv");
       numberAddOn = numberAddOn + 1;
       Serial.println("thinking about new filenames...");
     }
-    String message2 = String("Filename ") + String(fullFilename) + String(" will be used.");
-    Serial.println(message2); 
+
+    Serial.print(fullFilename);
+    Serial.println(" will be used.");
     return(fullFilename);
   }
   else{
