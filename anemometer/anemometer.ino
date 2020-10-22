@@ -35,7 +35,7 @@ String dataString ="";               //hold data to be written to SD card
 
 //======================SETTINGS========================
 uint32_t dataLoopLength = 10000;    // length of loop to report average speed
-String filenameSD = "wind";       // will automatically be set to date - filename without .csv at the end filenameSD to write to SD card, can't be longer than 8
+String filenameSD = "roof";       // will automatically be set to date - filename without .csv at the end filenameSD to write to SD card, can't be longer than 8
 //======================SETTINGS========================
 
 
@@ -74,7 +74,6 @@ void setup() {
     lcd.setCursor(0, 1); //Set the cursor on the third column and the second row (counting starts at 0!).
     lcd.print("SD card found");
   }  
-  
   filenameSD = changeFileNameIfExists(filenameSD);
   
   
@@ -86,6 +85,7 @@ void setup() {
   
   //SETUP END
   Serial.end();
+  delay(2500);
   lcd.clear();
   
   //attachInterrupt(digitalPinToInterrupt(interruptPin), anemometerISR, RISING); //setup interrupt on anemometer input pin, will run anemometerISR function whenever falling edge is detected
