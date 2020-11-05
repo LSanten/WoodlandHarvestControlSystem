@@ -17,7 +17,7 @@
 
 // Wiring: SDA pin is connected to A4 and SCL pin to A5.
 // Connect to LCD via I2C, default address 0x27 (A0-A2 not jumpered)
-LiquidCrystal_I2C lcd = LiquidCrystal_I2C(0x27, 16, 2); // Change to (0x27, 20, 4)) for 20x4 LCD.
+LiquidCrystal_I2C lcd = LiquidCrystal_I2C(0x27, 20, 4); // Change to (0x27, 16, 2)) for 16x2 LCD.
 
 struct ts t;                              //objects for real time clock
 const byte LED = 13;
@@ -31,11 +31,12 @@ volatile float pulseTime = 0;       //stores time between one anemometer realy c
 volatile float culPulseTime = 0;    //stores cumulative pusletimes for averaging
 volatile unsigned int avgWindCount = 0;     //stores anemometer realy countrs for doing average wind speed
 uint32_t dataLoopCount = 0;                //increments every time data is being written and is multiplied with dataLoopLength
-String dataString ="";               //hold data to be written to SD card
+String wSpeedString ="";               //hold data to be written to SD card
+float maxWind = 0;
 
 //======================SETTINGS========================
 uint32_t dataLoopLength = 10000;    // length of loop to report average speed
-String filenameSD = "roof";       // will automatically be set to date - filename without .csv at the end filenameSD to write to SD card, can't be longer than 8
+String filenameSD = "speed";       // will automatically be set to date - filename without .csv at the end filenameSD to write to SD card, can't be longer than 8
 //======================SETTINGS========================
 
 
@@ -77,16 +78,18 @@ void setup() {
   filenameSD = changeFileNameIfExists(filenameSD);
   
   
-  String dataString = String("Speed [m/s]"); //write CSV (comma seperated vector)
-  String timeString = String("Time [s]") + ",";
-  String dateString = String("Date") + ",";
-  saveData(dateString, timeString, dataString, filenameSD);
+  String wSpeedString = String("Speed [m/s]"); //write CSV (comma seperated vector)
+  String timeString = String("");
+  String dateString = String("DateTi");
+  String yearString = String("");
+  saveData(yearString, dateString, timeString, wSpeedString, filenameSD);
    
   
   //SETUP END
   Serial.end();
   delay(2500);
   lcd.clear();
+  //lcd.noBacklight();  
   
   //attachInterrupt(digitalPinToInterrupt(interruptPin), anemometerISR, RISING); //setup interrupt on anemometer input pin, will run anemometerISR function whenever falling edge is detected
   dataTimer = millis();                                 //start data timer
@@ -120,21 +123,26 @@ void loop() {
     start = true;
     dataTimer = rTime;     //reset loop timer
 
-    
-    Serial.print("avg Wind Speed m/s: ");
+    Serial.print("10s avg speed: ");
     Serial.println(aWSpeedMS);
+
+    //update max speed
+    if (aWSpeedMS > maxWind and aWSpeedMS < 70.0){
+      maxWind = aWSpeedMS;
+    }
     
-    updateLCD(aWSpeedMS);
+    updateLCD(aWSpeedMS, maxWind, filenameSD);
     
     //Write to SD card    
     DS3231_get(&t);             //get current time
     //display real from rtc on lcd display
-    String timeString = String(t.hour) + String(":") + String(t.min) + String(":")+ String(t.sec) + String(",");
-    String dateString = String(t.mon) + String("-")+ String(t.mday) + String(",");                                //string can't be longer - otherwise memory is too full
+    String timeString = String(t.hour) + String(":") + String(t.min) + String(":")+ String(t.sec);
+    String yearString = String(t.year) + String("-");
+    String dateString = String(t.mon) + String("-")+ String(t.mday);                                //string can't be longer - otherwise memory is too full
   
     
-    dataString = String(aWSpeedMS); //write CSV (comma seperated vector)
-    saveData(dateString, timeString, dataString, filenameSD);
+    wSpeedString = String(aWSpeedMS); //write CSV (comma seperated vector)
+    saveData(yearString, dateString, timeString, wSpeedString, filenameSD);
     
 
     Serial.end(); //end of dataprocessing loop
@@ -172,14 +180,22 @@ void anemometerISR() {
   else digitalWrite(LED, LOW);
 }
 
-void updateLCD(float windSpeed) {
+void updateLCD(float windSpeed, float maxWind, String filenameSD) {
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("avg wind speed");
+  lcd.print("10s avg speed");
   lcd.setCursor(0, 1);
   lcd.print(windSpeed);
   lcd.setCursor(5, 1);
   lcd.print("m/s");
+  lcd.setCursor(0, 2);
+  lcd.print("max:");
+  lcd.setCursor(6, 2);
+  lcd.print(maxWind);
+  lcd.setCursor(0, 3);
+  lcd.print(filenameSD);
+  
+  
 }
 
 void addTableHeader(String tableHeader, String filenameSD){
@@ -189,13 +205,16 @@ void addTableHeader(String tableHeader, String filenameSD){
   sensorData.close(); // close the file
 }
 
-void saveData(String dateString, String timeString, String dataString, String filenameSD){
+void saveData(String yearString, String dateString, String timeString, String wSpeedString, String filenameSD){
   //if(SD.exists(filenameSD)){ // check the card is still there
   File sensorData = SD.open(filenameSD, FILE_WRITE);
   if (sensorData){
+      sensorData.print(yearString); 
       sensorData.print(dateString);                 //strings need to be parsed individually - otherwise they are too long for limited memory
+      sensorData.print(String(" ")); 
       sensorData.print(timeString);
-      sensorData.println(dataString);
+      sensorData.print(String(","));
+      sensorData.println(wSpeedString);
       Serial.println("Wrote to file.");
       sensorData.close(); // close the file
     }
@@ -205,7 +224,7 @@ void saveData(String dateString, String timeString, String dataString, String fi
   }
 }
 
-//void saveDataWithoutFileOverwrite(String dataString){
+//void saveDataWithoutFileOverwrite(String wSpeedString){
   
 //}
 
