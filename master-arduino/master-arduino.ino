@@ -12,10 +12,13 @@
 //==========================================================================================================================================================================================================================================
 // Load supporting Arduino Libraries
 //==========================================================================================================================================================================================================================================
-
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 //==========================================================================================================================================================================================================================================
 // Create and initialize global variables, objects, and constants (containers for all data)
 //==========================================================================================================================================================================================================================================
+LiquidCrystal_I2C lcd = LiquidCrystal_I2C(0x27, 20, 4); // Change to (0x27, 20, 4)) for 20x4 LCD.
+
 const int aliveLED = 13;                //create a name for "robot alive" blinky light pin
 const int eStopPin = 12;                //create a name for pin connected to ESTOP switch
 const int PWR_STRIP = 4;                //pin for power strip switch
@@ -41,12 +44,14 @@ float voltageSumUp = 0;                 //place to sum up voltages which will be
 uint32_t fridgeWaitTimerStart = 0;          // millis start time of timer for fridge to wait before checking voltaget (which might turn fridge off again)
 uint32_t fridgeTimer;
 
+int displayState = 1;                   //states for display visuals
+
 
 //===================SETTINGS======================
 bool defaultSwitch = true;                        //true turns on running on a default setting, false waits for your input.
 String command = "fridge";                        //will default to this command if defaultSwitch == true
-float fridgeUpperVoltageThreshold = 27.75;        //fridge will turn on when this threshold is reached
-float fridgeLowerVoltageThreshold = 25.6;         //fridge will turn off when this lower threshold is reached (fridge won't turn off if this voltage is reached during the first two minutes after is was switched on)
+float fridgeUpperVoltageThreshold = 28.8;        //fridge will turn on when this threshold is reached
+float fridgeLowerVoltageThreshold = 26.35;         //fridge will turn off when this lower threshold is reached (fridge won't turn off if this voltage is reached during the first two minutes after is was switched on)
 //===================SETTINGS======================
 
 //==========================================================================================================================================================================================================================================
@@ -64,6 +69,19 @@ void setup() {
   // Step 2) Put your robot mission setup code here, to run once:
   pinMode(PWR_STRIP, OUTPUT);
   digitalWrite(PWR_STRIP, LOW);
+
+  // beep twice during boot up
+  tone(buzzerPin, 3500);
+  delay(250);
+  tone(buzzerPin, 4200);
+  delay(250);
+  noTone(buzzerPin);
+
+  //LCD DISPLAY INIT
+  lcd.init();           //initiate lcd display
+  lcd.backlight();
+  lcd.setCursor(0, 0);  // Set the cursor on the first column and first row.
+
 }
 //==========================================================================================================================================================================================================================================
 // Flight code to run continuously until robot is powered down
@@ -141,7 +159,7 @@ void loop() {
       else if (command == "fridge" or command == "f"){                                // make robot alive with small motions
         // READ BATTERY VOLTAGE
         voltDivValue = analogRead(voltageDivider);                // read value from voltage divider 
-        batteryVoltage = 6.000*(float(voltDivValue)/205);         // multiply value by 6 to get real voltage value
+        batteryVoltage = 5.78*(float(voltDivValue)/205);         // multiply value by 6 to get real voltage value
         //Serial.println(batteryVoltage);
 
         // AVERAGE VOLTAGE
@@ -155,7 +173,9 @@ void loop() {
             Serial.print("==> avg. voltage: ");
             Serial.println(averageVoltage);
             averageVoltCounter = 0;
-            voltageSumUp = 0;            
+            voltageSumUp = 0;   
+
+            updateDisplay(displayState); //display system voltage and thesholds
           }
         }
 
@@ -196,7 +216,7 @@ void loop() {
         }
                   
         
-        if(averageVoltage < fridgeLowerVoltageThreshold and fridgeTimer > 120000){
+        if(averageVoltage < fridgeLowerVoltageThreshold and fridgeTimer > 180000){
           
           Serial.println("======");
           Serial.print("Timer: ");
@@ -258,6 +278,8 @@ void loop() {
           noTone(buzzerPin);
           buzzerState = buzzerState + 1;
         }
+
+        
 
       }
       
@@ -371,6 +393,27 @@ String getOperatorInput() {
 
 // ACT functinos act---act---act---act---act---act---act---act---act---act---act---act---act-----
 // place act functions here
+
+void updateDisplay(int displayState){
+  lcd.clear();
+
+  if (displayState == 1){     //standard state
+    lcd.setCursor(0, 0); // Set the cursor on the first column and first row.
+    lcd.print("Fridge Settings ");
+    lcd.setCursor(0, 1); // Set the cursor on the first column and first row.
+    lcd.print("sys voltage: "); // Print the string "Hello World!"
+    lcd.setCursor(15, 1);
+    lcd.print(averageVoltage);
+    lcd.setCursor(0, 2);
+    lcd.print("on @: "); 
+    lcd.setCursor(15, 2);
+    lcd.print(fridgeUpperVoltageThreshold);
+    lcd.setCursor(0, 3);
+    lcd.print("off @: ");
+    lcd.setCursor(15, 3);
+    lcd.print(fridgeLowerVoltageThreshold);
+  }
+}
 
 // END of Functions
 //===============================================================================================
