@@ -36,7 +36,7 @@ float maxWind = 0;
 
 //======================SETTINGS========================
 uint32_t dataLoopLength = 10000;    // length of loop to report average speed
-String filenameSD = "speed";       // will automatically be set to date - filename without .csv at the end filenameSD to write to SD card, can't be longer than 8
+String filenameSD = "barn";       // will automatically be set to date - filename without .csv at the end filenameSD to write to SD card, can't be longer than 8
 //======================SETTINGS========================
 
 
@@ -89,7 +89,7 @@ void setup() {
   Serial.end();
   delay(2500);
   lcd.clear();
-  //lcd.noBacklight();  
+  lcd.noBacklight();  
   
   //attachInterrupt(digitalPinToInterrupt(interruptPin), anemometerISR, RISING); //setup interrupt on anemometer input pin, will run anemometerISR function whenever falling edge is detected
   dataTimer = millis();                                 //start data timer
@@ -127,7 +127,7 @@ void loop() {
     Serial.println(aWSpeedMS);
 
     //update max speed
-    if (aWSpeedMS > maxWind and aWSpeedMS < 70.0){
+    if (aWSpeedMS > maxWind and aWSpeedMS < 30.0){
       maxWind = aWSpeedMS;
     }
     
