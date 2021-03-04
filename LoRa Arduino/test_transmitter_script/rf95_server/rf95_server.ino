@@ -11,13 +11,17 @@
 #include <SPI.h>
 #include <RH_RF95.h>
 
+#include <Adafruit_INA260.h> //this library requires the BusIO adafruit library to work
+#include <LiquidCrystal_I2C.h> //lcd display
+
 // Singleton instance of the radio driver
 RH_RF95 rf95;
 //RH_RF95 rf95(5, 2); // Rocket Scream Mini Ultra Pro with the RFM95W
 //RH_RF95 rf95(8, 3); // Adafruit Feather M0 with RFM95 
 
-// Need this on Arduino Zero with SerialUSB port (eg RocketScream Mini Ultra Pro)
-//#define Serial SerialUSB
+Adafruit_INA260 ina260 = Adafruit_INA260(); //voltage sensor
+LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+
 
 int led = 8;
 
@@ -30,9 +34,27 @@ void setup()
 
   pinMode(led, OUTPUT);     
   Serial.begin(9600);
+  
   while (!Serial) ; // Wait for serial port to be available
   if (!rf95.init())
-    Serial.println("init failed");  
+    Serial.println("init failed"); 
+
+  if (!ina260.begin()) {
+    Serial.println("Couldn't find INA260 chip");
+    while (1);
+  }
+
+
+  lcd.init();                      // initialize the lcd 
+  lcd.backlight();
+  lcd.setCursor(0,0);
+  lcd.print("LoRa System");
+  lcd.setCursor(0,1);
+  lcd.print("activated");
+  delay(2000);
+  lcd.clear();
+
+  
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
   // You can change the modulation parameters with eg
@@ -50,9 +72,23 @@ void setup()
 }
 
 void loop()
-{
+{ 
+
+  //CHECK BATTERY VOLTAGE AND DISPLAY ON LCD
+  float batteryVoltage = ina260.readBusVoltage()/1000;
+  Serial.print(batteryVoltage);
+  Serial.println("V");
+
+  lcd.setCursor(0,0);
+  lcd.print("Voltage");
+  lcd.setCursor(0,1);
+  lcd.print(batteryVoltage);
+
+  
+  // CHECK IF LORA INTERFACE RECEIVES MESSAGES
   if (rf95.available())
   {
+    Serial.println("available:");
     // Should be a message for us now   
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf);
@@ -77,4 +113,8 @@ void loop()
       Serial.println("recv failed");
     }
   }
+
+  
+
+  
 }
