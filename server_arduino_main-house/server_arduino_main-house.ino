@@ -117,5 +117,5 @@ void Server_sendBatteryStatus(float batteryVoltage){
   rf95.send(v, sizeof(data));
   rf95.waitPacketSent();
   Serial.println("Sent battery status");
-  delay(1000);
+  delay(10000);
 }
