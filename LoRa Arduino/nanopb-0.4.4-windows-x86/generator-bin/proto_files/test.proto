@@ -1,0 +1,10 @@
+
+// body of message TestMessage = HouseStatus
+// navigate to the generator bin--> C:\Users\lsanten\Documents\GitHub\WoodlandHarvestControlSystem\LoRa Arduino\nanopb-0.4.4-windows-x86\generator-bin
+// run on command prompt --> protoc --nanopb_out=. proto_files/test.proto
+
+syntax = "proto2";
+
+message TestMessage {
+    required int32 test_number = 1;
+}
