@@ -3,6 +3,11 @@
 
 #include <SPI.h>
 #include <RH_RF95.h>
+#include <Adafruit_NeoPixel.h>
+
+#define LED_PIN    22
+#define LED_COUNT  8// How many NeoPixels are attached to the Arduino?
+Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // Singleton instance of the radio driver
 RH_RF95 rf95;
@@ -19,18 +24,23 @@ void setup()
     Serial.println("init failed");
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
+  strip.begin();
+  strip.show(); // Initialize all neo pixels to 'off'
+
 }
 
 void loop()
 {
   //sendMessageToServer();
   //waitForMessageFromServer(); 
-  uint8_t batteryVChar = receiveBatteryVoltage();
-  batteryVFloat = atof(batteryVChar); //convert char to float
-
+  String batteryVChar = receiveBatteryVoltage();
+  //batteryVFloat = atof(batteryVChar); //convert char to float
+  batteryVFloat = batteryVChar.toFloat();
   
-  Serial.print("Battery Voltage received:");
-  Serial.println(batteryVChar);
+  Serial.print("Battery Voltage received: ");
+  Serial.println(batteryVFloat);
+
+  lightLEDbasedOnVoltage (batteryVFloat);
 }
 
 //-----------------------------------------------------------------------------------------------
@@ -77,7 +87,7 @@ void waitForMessageFromServer(){
   delay(400);
 }
 
-uint8_t receiveBatteryVoltage(){
+String receiveBatteryVoltage(){
 // Now wait for a reply
   uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
   uint8_t len = sizeof(buf);
@@ -103,6 +113,33 @@ uint8_t receiveBatteryVoltage(){
   }
   
   delay(400);
-  
-  return buf;
+  String charvolt = (char*)buf;
+  return charvolt;
+}
+
+void lightLEDbasedOnVoltage (float batteryVoltage){
+  if (batteryVoltage > 26.8){
+    // violet
+    uint32_t colorStrip = strip.Color(255, 51, 255); // red, green, blue
+    strip.fill(colorStrip, 0, 10);
+    strip.show();
+  }
+  else if (batteryVoltage >= 25.0 and batteryVoltage <= 26.8){
+    // green
+    uint32_t colorStrip = strip.Color(0,255, 0);
+    strip.fill(colorStrip, 0, 10);
+    strip.show();
+  }
+  else if (batteryVoltage >= 24.3 and batteryVoltage < 25.0){
+    // orange
+    uint32_t colorStrip = strip.Color(255, 178, 102);
+    strip.fill(colorStrip, 0, 10);
+    strip.show();
+  }
+  else if (batteryVoltage < 24.3){
+    // red
+    uint32_t colorStrip = strip.Color(255, 0, 0);
+    strip.fill(colorStrip, 0, 10);
+    strip.show();
+  }
 }
