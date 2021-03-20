@@ -5,8 +5,8 @@
 #include <RH_RF95.h>
 #include <Adafruit_NeoPixel.h>
 
-#define LED_PIN    22
-#define LED_COUNT  8// How many NeoPixels are attached to the Arduino?
+#define LED_PIN    24
+#define LED_COUNT  3// How many NeoPixels are attached to the Arduino?
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // Singleton instance of the radio driver
@@ -132,7 +132,7 @@ void lightLEDbasedOnVoltage (float batteryVoltage){
   }
   else if (batteryVoltage >= 24.3 and batteryVoltage < 25.0){
     // orange
-    uint32_t colorStrip = strip.Color(255, 178, 102);
+    uint32_t colorStrip = strip.Color(255, 128, 0);
     strip.fill(colorStrip, 0, 10);
     strip.show();
   }
