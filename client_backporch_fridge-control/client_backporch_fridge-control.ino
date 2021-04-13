@@ -3,29 +3,22 @@
 
 #include <SPI.h>
 #include <RH_RF95.h>
-#include <Adafruit_NeoPixel.h>
 
-#define LED_PIN    24
-#define LED_COUNT  3// How many NeoPixels are attached to the Arduino?
-Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+const int PWR_STRIP = 4;                //pin for power strip switch
+const int buzzerPin = 5;                //pin for piezo buzzer
 
 // Singleton instance of the radio driver
 RH_RF95 rf95;
 float batteryVFloat = 0.01;
 
-
 void setup() 
 {
-
-
   Serial.begin(9600);
   while (!Serial) ; // Wait for serial port to be available
   if (!rf95.init())
     Serial.println("init failed");
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
-
-  strip.begin();
-  strip.show(); // Initialize all neo pixels to 'off'
+  buzzerSound(0, 0); // play boot up sound
 
 }
 
@@ -117,29 +110,16 @@ String receiveBatteryVoltage(){
   return charvolt;
 }
 
-void lightLEDbasedOnVoltage (float batteryVoltage){
-  if (batteryVoltage > 26.8){
-    // violet
-    uint32_t colorStrip = strip.Color(255, 51, 255); // red, green, blue
-    strip.fill(colorStrip, 0, 10);
-    strip.show();
+
+ void buzzerSound(int program, int soundSelection){
+  
+  if (program == 0){ //boot up program sound
+      // beep twice during boot up
+  tone(buzzerPin, 3500);
+  delay(250);
+  tone(buzzerPin, 4200);
+  delay(250);
+  noTone(buzzerPin);
   }
-  else if (batteryVoltage >= 25.0 and batteryVoltage <= 26.8){
-    // green
-    uint32_t colorStrip = strip.Color(0,255, 0);
-    strip.fill(colorStrip, 0, 10);
-    strip.show();
+  
   }
-  else if (batteryVoltage >= 24.3 and batteryVoltage < 25.0){
-    // orange
-    uint32_t colorStrip = strip.Color(255, 128, 0);
-    strip.fill(colorStrip, 0, 10);
-    strip.show();
-  }
-  else if (batteryVoltage < 24.3){
-    // red
-    uint32_t colorStrip = strip.Color(255, 0, 0);
-    strip.fill(colorStrip, 0, 10);
-    strip.show();
-  }
-}
