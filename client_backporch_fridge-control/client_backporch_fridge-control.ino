@@ -111,7 +111,7 @@ String receiveBatteryVoltage(){
 }
 
 
- void buzzerSound(int program, int soundSelection){
+void buzzerSound(int program, int soundSelection){
   
   if (program == 0){ //boot up program sound
       // beep twice during boot up
@@ -121,5 +121,9 @@ String receiveBatteryVoltage(){
   delay(250);
   noTone(buzzerPin);
   }
-  
   }
+
+void fridgeControl(int minimumOnTime, int lowerVoltageThreshold){
+  
+}
+  
